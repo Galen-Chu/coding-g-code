@@ -1,1 +1,463 @@
-# coding-g-code
+# CI/CD Toolkit
+
+A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, and workflows for automating your development pipeline.
+
+## Features
+
+- **Language-Agnostic**: Works with Node.js, Python, Go, Java, Docker, and more
+- **Auto-Detection**: Automatically detects project type and tools
+- **GitHub Actions & GitLab CI**: Ready-to-use workflow templates
+- **Comprehensive Scripts**: Lint, test, build, deploy, and rollback utilities
+- **Health Checks**: Built-in deployment validation
+- **Notifications**: Slack, email, and webhook support
+- **Rollback Support**: Automatic rollback on deployment failure
+- **Configurable**: Centralized configuration file with environment variable overrides
+
+## Quick Start
+
+### 1. Clone or Copy to Your Project
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ci-cd-toolkit.git
+cd ci-cd-toolkit
+
+# Or copy the scripts directory to your project
+cp -r ci-cd-toolkit /path/to/your/project/scripts
+cp -r ci-cd-toolkit/config /path/to/your/project/
+```
+
+### 2. Initialize Your Project
+
+```bash
+# Run the initialization script
+bash scripts/setup/init-project.sh
+```
+
+This will:
+- Create a `ci-cd.conf` configuration file in your project
+- Detect your project type
+- Set up basic CI/CD workflows
+
+### 3. Install Dependencies (Optional)
+
+```bash
+# Install required tools for your platform
+bash scripts/setup/install-deps.sh
+```
+
+### 4. Run Scripts
+
+```bash
+# Lint your code
+bash scripts/ci/lint.sh
+
+# Run tests
+bash scripts/ci/test.sh
+
+# Build artifacts
+bash scripts/cd/build.sh
+
+# Deploy to environment
+bash scripts/cd/deploy.sh staging
+```
+
+## Project Structure
+
+```
+ci-cd-toolkit/
+├── scripts/
+│   ├── ci/
+│   │   ├── lint.sh          # Lint code (auto-detects linter)
+│   │   ├── test.sh          # Run tests (auto-detects runner)
+│   │   └── coverage.sh      # Generate coverage reports
+│   ├── cd/
+│   │   ├── build.sh         # Build artifacts
+│   │   ├── deploy.sh        # Deploy to environments
+│   │   └── rollback.sh      # Rollback deployments
+│   ├── setup/
+│   │   ├── install-deps.sh  # Install required tools
+│   │   └── init-project.sh  # Initialize project
+│   └── utils/
+│       ├── common.sh        # Core utilities
+│       ├── logger.sh        # Logging functions
+│       ├── validators.sh    # Input validation
+│       ├── notifiers.sh     # Notifications
+│       └── health-check.sh  # Health checks
+├── config/
+│   └── ci-cd.conf           # Configuration template
+├── templates/
+│   ├── github-actions/      # GitHub Actions workflows
+│   └── gitlab-ci/           # GitLab CI configurations
+├── examples/
+│   ├── simple-nodejs/       # Node.js example project
+│   └── simple-python/       # Python example project
+└── docs/
+    ├── getting-started.md   # Getting started guide
+    ├── configuration.md     # Configuration reference
+    └── scripts-reference.md # Script documentation
+```
+
+## Configuration
+
+Create a `config/ci-cd.conf` file in your project (or use `.ci-cd.conf` in the root):
+
+```ini
+[general]
+project_type=auto
+log_level=info
+dry_run=false
+
+[ci]
+lint_enabled=true
+test_enabled=true
+coverage_threshold=80
+parallel_tests=true
+
+[cd]
+build_tool=auto
+docker_registry=
+environments=dev,staging,prod
+health_check_timeout=300
+auto_rollback=true
+
+[notifications]
+slack_webhook=
+enabled_events=deploy_success,deploy_failure
+```
+
+See [Configuration Guide](docs/configuration.md) for all options.
+
+## Usage
+
+### Command-Line Interface
+
+All scripts support common options:
+
+```bash
+bash scripts/ci/lint.sh --help
+bash scripts/ci/test.sh --log-level debug
+bash scripts/cd/build.sh --dry-run
+bash scripts/cd/deploy.sh --config custom.conf staging
+```
+
+### Environment Variables
+
+Override configuration with environment variables:
+
+```bash
+export LOG_LEVEL=debug
+export DRY_RUN=true
+export BUILD_VERSION=1.0.0
+bash scripts/cd/build.sh
+```
+
+## Supported Languages and Tools
+
+### Node.js / JavaScript
+
+- **Linters**: ESLint, Standard, TSLint
+- **Test Runners**: Jest, Mocha, Jasmine, Vitest
+- **Package Managers**: npm, yarn, pnpm
+- **Coverage**: Istanbul, c8, Vitest
+
+### Python
+
+- **Linters**: flake8, pylint, black
+- **Test Runners**: pytest, unittest
+- **Coverage**: Coverage.py, pytest-cov
+- **Package Managers**: pip, poetry, pipenv
+
+### Go
+
+- **Linters**: golangci-lint, gofmt, golint
+- **Test Runners**: go test
+- **Coverage**: go test -cover
+
+### Java
+
+- **Linters**: Checkstyle, SpotBugs
+- **Test Runners**: JUnit, TestNG
+- **Build Tools**: Maven, Gradle
+
+### Docker
+
+- **Build**: Dockerfile, docker-compose
+- **Multi-stage builds**: Supported
+- **Registry push**: Docker Hub, ECR, GCR, ACR
+
+## CI/CD Platform Integration
+
+### GitHub Actions
+
+Copy workflow templates to your `.github/workflows/` directory:
+
+```bash
+cp templates/github-actions/ci.yml .github/workflows/
+cp templates/github-actions/cd.yml .github/workflows/
+```
+
+Features:
+- Matrix builds across OS and language versions
+- Dependency caching
+- Test report uploads
+- Coverage report uploads
+- Environment-based deployments with approval gates
+
+### GitLab CI
+
+Copy the GitLab CI configuration:
+
+```bash
+cp templates/gitlab-ci/ci.yml .gitlab-ci.yml
+```
+
+Features:
+- Pipeline stages: lint, test, build, deploy
+- Job artifacts and reports
+- Cache configuration
+- Environment-specific deployments
+- Manual approval for production
+
+## Scripts Reference
+
+### CI Scripts
+
+#### `scripts/ci/lint.sh`
+
+Run linters based on project type.
+
+```bash
+# Lint all files
+bash scripts/ci/lint.sh
+
+# Lint specific files
+bash scripts/ci/lint.sh src/
+
+# Auto-fix issues
+bash scripts/ci/lint.sh --fix
+```
+
+#### `scripts/ci/test.sh`
+
+Run tests with configurable runners.
+
+```bash
+# Run all tests
+bash scripts/ci/test.sh
+
+# Run specific test file
+bash scripts/ci/test.sh tests/test_api.py
+
+# Run with coverage
+bash scripts/ci/test.sh --coverage
+
+# Parallel execution
+bash scripts/ci/test.sh --parallel
+```
+
+#### `scripts/ci/coverage.sh`
+
+Generate coverage reports.
+
+```bash
+# Generate coverage report
+bash scripts/ci/coverage.sh
+
+# Enforce threshold
+bash scripts/ci/coverage.sh --threshold 80
+
+# Output format
+bash scripts/ci/coverage.sh --format lcov
+```
+
+### CD Scripts
+
+#### `scripts/cd/build.sh`
+
+Build project artifacts.
+
+```bash
+# Build with auto-detection
+bash scripts/cd/build.sh
+
+# Specific version
+bash scripts/cd/build.sh --version 1.0.0
+
+# Docker build
+bash scripts/cd/build.sh --docker
+
+# Multi-platform
+bash scripts/cd/build.sh --platform linux/amd64,linux/arm64
+```
+
+#### `scripts/cd/deploy.sh`
+
+Deploy to environments.
+
+```bash
+# Deploy to staging
+bash scripts/cd/deploy.sh staging
+
+# Deploy to production
+bash scripts/cd/deploy.sh prod
+
+# Skip health checks
+bash scripts/cd/deploy.sh dev --skip-health-check
+
+# Force deployment
+bash scripts/cd/deploy.sh prod --force
+```
+
+#### `scripts/cd/rollback.sh`
+
+Rollback to previous version.
+
+```bash
+# Rollback to previous version
+bash scripts/cd/rollback.sh prod
+
+# Rollback to specific version
+bash scripts/cd/rollback.sh prod --version 1.0.1
+
+# List available versions
+bash scripts/cd/rollback.sh prod --list
+```
+
+### Utility Scripts
+
+#### `scripts/utils/health-check.sh`
+
+Check service health.
+
+```bash
+# HTTP endpoint check
+bash scripts/utils/health-check.sh https://api.example.com/health
+
+# TCP port check
+bash scripts/utils/health-check.sh --tcp localhost:8080
+
+# With retry
+bash scripts/utils/health-check.sh --retry 10 --interval 5 https://api.example.com/health
+```
+
+#### `scripts/utils/notifiers.sh`
+
+Send notifications.
+
+```bash
+# Slack notification
+SLACK_WEBHOOK=https://hooks.slack.com/... \
+  bash scripts/utils/notifiers.sh slack "Deployment successful"
+
+# Email notification
+bash scripts/utils/notifiers.sh email "Build failed" --to devops@example.com
+
+# Webhook notification
+bash scripts/utils/notifiers.sh webhook https://hooks.example.com/deploy
+```
+
+## Examples
+
+See the `examples/` directory for complete working examples:
+
+- **simple-nodejs**: Express API with tests and linting
+- **simple-python**: Flask application with pytest
+
+## Environment Configuration
+
+Configure deployment environments in `ci-cd.conf`:
+
+```ini
+[environment.dev]
+auto_deploy=true
+skip_health_check=true
+url=https://dev.example.com
+
+[environment.staging]
+auto_deploy=true
+required_approvals=1
+url=https://staging.example.com
+
+[environment.prod]
+auto_deploy=false
+required_approvals=2
+url=https://prod.example.com
+```
+
+## Notifications
+
+Configure Slack webhooks, email, or generic webhooks:
+
+```bash
+# Slack
+export SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+export SLACK_CHANNEL=#deployments
+
+# Email
+export SMTP_SERVER=smtp.example.com
+export SMTP_USERNAME=notifications@example.com
+export SMTP_PASSWORD=your-password
+export EMAIL_RECIPIENTS=team@example.com
+
+# Generic webhook
+export WEBHOOK_URL=https://hooks.example.com/deploy
+export WEBHOOK_METHOD=POST
+```
+
+## Troubleshooting
+
+### Enable Debug Logging
+
+```bash
+export LOG_LEVEL=debug
+bash scripts/ci/test.sh
+```
+
+### Dry Run Mode
+
+See what would happen without making changes:
+
+```bash
+export DRY_RUN=true
+bash scripts/cd/deploy.sh staging
+```
+
+### Check Script Dependencies
+
+```bash
+bash scripts/setup/install-deps.sh --check
+```
+
+### Validate Configuration
+
+```bash
+bash scripts/utils/validators.sh --config
+```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: See the [docs/](docs/) directory
+- **Issues**: Report bugs on GitHub Issues
+- **Discussions**: Use GitHub Discussions for questions
+
+## Roadmap
+
+- [ ] Azure DevOps pipelines
+- [ ] Bitbucket Pipelines
+- [ ] Kubernetes deployment support
+- [ ] Terraform integration
+- [ ] Monitoring and observability hooks
+- [ ] More language-specific templates
+
+## Acknowledgments
+
+Built with love for the DevOps community. Inspired by best practices from GitHub Actions, GitLab CI, and modern CI/CD platforms.

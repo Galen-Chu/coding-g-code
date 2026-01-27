@@ -1,0 +1,491 @@
+# CI/CD Toolkit - GitLab CI/CD Configuration
+# =============================================================================
+# Complete GitLab CI pipeline with lint, test, build, and deploy stages.
+#
+# Stages:
+#   - lint: Code quality checks
+#   - test: Unit and integration tests
+#   - build: Build artifacts and Docker images
+#   - deploy: Deploy to environments
+#
+# Documentation: https://docs.gitlab.com/ee/ci/
+
+# =============================================================================
+# Pipeline Configuration
+# =============================================================================
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+# =============================================================================
+# Global Variables
+# =============================================================================
+variables:
+  GIT_STRATEGY: fetch
+  GIT_DEPTH: 0
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  # Project-specific variables - customize as needed
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
+  GO_VERSION: "1.21"
+  # Test and coverage directories
+  TEST_RESULTS_DIR: "test-results"
+  COVERAGE_DIR: "coverage"
+
+# =============================================================================
+# Cache Configuration
+# =============================================================================
+.cache_template: &cache_template
+  key:
+    files:
+      - package-lock.json
+      - yarn.lock
+      - pnpm-lock.yaml
+      - requirements.txt
+      - go.sum
+  paths:
+    - node_modules/
+    - .npm/
+    - .venv/
+    - venv/
+    - .cache/pip
+    - vendor/
+    - .cache/go-build/
+
+# =============================================================================
+# Pipeline Templates
+# =============================================================================
+.nodejs_template: &nodejs_template
+  image: node:${NODE_VERSION}
+  cache:
+    <<: *cache_template
+  before_script:
+    - npm ci --prefer-offline || npm install
+
+.python_template: &python_template
+  image: python:${PYTHON_VERSION}
+  cache:
+    <<: *cache_template
+  before_script:
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - pip install -r requirements.txt || pip install -e .
+
+.go_template: &go_template
+  image: golang:${GO_VERSION}
+  cache:
+    <<: *cache_template
+  before_script:
+    - mkdir -p .cache/go-build
+    - go mod download
+
+# =============================================================================
+# Lint Stage
+# =============================================================================
+lint:
+  stage: lint
+  <<: *nodejs_template
+  script:
+    - chmod +x scripts/ci/lint.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/lint.sh
+  artifacts:
+    reports:
+      lint: lint-report.json
+    expire_in: 1 week
+  allow_failure: false
+  tags:
+    - docker
+
+lint:python:
+  stage: lint
+  <<: *python_template
+  script:
+    - pip install flake8 pylint
+    - chmod +x scripts/ci/lint.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/lint.sh
+  artifacts:
+    reports:
+      lint: lint-report.json
+    expire_in: 1 week
+  allow_failure: false
+  tags:
+    - docker
+
+lint:go:
+  stage: lint
+  <<: *go_template
+  script:
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    - chmod +x scripts/ci/lint.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/lint.sh
+  artifacts:
+    reports:
+      lint: lint-report.json
+    expire_in: 1 week
+  allow_failure: false
+  tags:
+    - docker
+
+# =============================================================================
+# Test Stage
+# =============================================================================
+test:
+  stage: test
+  <<: *nodejs_template
+  script:
+    - chmod +x scripts/ci/test.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/test.sh --coverage
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      junit: ${TEST_RESULTS_DIR}/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ${COVERAGE_DIR}/cobertura-coverage.xml
+    paths:
+      - ${TEST_RESULTS_DIR}/
+      - ${COVERAGE_DIR}/
+    expire_in: 1 week
+  tags:
+    - docker
+
+test:python:
+  stage: test
+  <<: *python_template
+  script:
+    - pip install pytest pytest-cov pytest-junitxml
+    - chmod +x scripts/ci/test.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/test.sh --coverage
+  coverage: '/TOTAL.*\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      junit: ${TEST_RESULTS_DIR}/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ${COVERAGE_DIR}/coverage.xml
+    paths:
+      - ${TEST_RESULTS_DIR}/
+      - ${COVERAGE_DIR}/
+    expire_in: 1 week
+  tags:
+    - docker
+
+test:go:
+  stage: test
+  <<: *go_template
+  script:
+    - chmod +x scripts/ci/test.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/ci/test.sh --coverage
+  coverage: '/coverage:\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ${COVERAGE_DIR}/coverage.xml
+    paths:
+      - ${COVERAGE_DIR}/
+    expire_in: 1 week
+  tags:
+    - docker
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+build:
+  stage: build
+  <<: *nodejs_template
+  script:
+    - chmod +x scripts/cd/build.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/build.sh --output dist
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - tags
+  tags:
+    - docker
+
+# =============================================================================
+# Docker Build
+# =============================================================================
+docker:build:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - chmod +x scripts/cd/build.sh
+    - chmod +x scripts/utils/*.sh
+    - |
+      docker build \
+        --build-arg VERSION=$CI_COMMIT_TAG \
+        --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+        --build-arg VCS_REF=$CI_COMMIT_SHA \
+        -t $IMAGE_TAG \
+        -t $IMAGE_LATEST \
+        .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+    - echo $IMAGE_TAG > dist/docker-image.txt
+  artifacts:
+    paths:
+      - dist/docker-image.txt
+    expire_in: 1 week
+  only:
+    - main
+    - tags
+  tags:
+    - docker
+
+# =============================================================================
+# Security Scanning
+# =============================================================================
+include:
+  - template: Security/License-Scanning.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+
+# Override some security scanning defaults
+dependency_scanning:
+  stage: test
+  allow_failure: true
+
+sast:
+  stage: test
+  allow_failure: true
+
+secret_detection:
+  stage: test
+  allow_failure: true
+
+container_scanning:
+  stage: test
+  variables:
+    CI_APPLICATION_REPOSITORY: $CI_REGISTRY_IMAGE
+    CI_APPLICATION_TAG: $CI_COMMIT_SHORT_SHA
+  allow_failure: true
+  only:
+    - main
+    - tags
+
+license_scanning:
+  stage: test
+  allow_failure: true
+
+# =============================================================================
+# Deploy Stage - Development
+# =============================================================================
+deploy:dev:
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: dev
+    url: $DEV_URL
+    on_stop: stop:dev
+  script:
+    - chmod +x scripts/cd/deploy.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/deploy.sh dev --skip-build
+  dependencies:
+    - build
+  only:
+    - main
+    - develop
+  when: manual
+  tags:
+    - docker
+
+stop:dev:
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: dev
+    action: stop
+  script:
+    - echo "Stopping dev environment"
+  when: manual
+  only:
+    - main
+    - develop
+  tags:
+    - docker
+
+# =============================================================================
+# Deploy Stage - Staging
+# =============================================================================
+deploy:staging:
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: staging
+    url: $STAGING_URL
+  script:
+    - chmod +x scripts/cd/deploy.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/deploy.sh staging --skip-build
+  dependencies:
+    - build
+  after_script:
+    - chmod +x scripts/utils/health-check.sh
+    - bash scripts/utils/health-check.sh $STAGING_URL/health --retry 30 --interval 10
+  only:
+    - main
+  when: on_success
+  tags:
+    - docker
+
+# =============================================================================
+# Deploy Stage - Production
+# =============================================================================
+deploy:prod:
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: production
+    url: $PRODUCTION_URL
+  script:
+    - chmod +x scripts/cd/deploy.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/deploy.sh prod --skip-build
+  dependencies:
+    - docker:build
+  after_script:
+    - chmod +x scripts/utils/health-check.sh
+    - bash scripts/utils/health-check.sh $PRODUCTION_URL/health --retry 60 --interval 5
+  only:
+    - tags
+  when: manual
+  tags:
+    - docker
+
+# Rollback on failure
+.deploy_prod_failure:
+  stage: deploy
+  <<: *nodejs_template
+  script:
+    - chmod +x scripts/cd/rollback.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/rollback.sh prod
+  when: on_failure
+  only:
+    - tags
+  tags:
+    - docker
+
+# =============================================================================
+# Review Apps (for Merge Requests)
+# =============================================================================
+.review_apps_template: &review_apps_template
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    url: https://$CI_ENVIRONMENT_SLUG.example.com
+    on_stop: stop_review
+  script:
+    - chmod +x scripts/cd/deploy.sh
+    - chmod +x scripts/utils/*.sh
+    - bash scripts/cd/deploy.sh $CI_ENVIRONMENT_SLUG --skip-build
+  dependencies:
+    - build
+  only:
+    - merge_requests
+  tags:
+    - docker
+
+review:apps:
+  <<: *review_apps_template
+
+stop_review:
+  stage: deploy
+  <<: *nodejs_template
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    action: stop
+  script:
+    - echo "Stopping review app $CI_ENVIRONMENT_SLUG"
+  when: manual
+  only:
+    - merge_requests
+  tags:
+    - docker
+
+# =============================================================================
+# Notifications
+# =============================================================================
+.deploy_success_notification:
+  stage: .post
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      curl -X POST $SLACK_WEBHOOK \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "text": "✅ Deployment successful",
+          "blocks": [
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Deployment successful*\n*Project:* '$CI_PROJECT_NAME'\n*Environment:* '$CI_ENVIRONMENT_NAME'\n*Commit:* '$CI_COMMIT_SHORT_SHA'\n*Branch:* '$CI_COMMIT_REF_NAME'"
+              }
+            }
+          ]
+        }'
+  when: on_success
+  only:
+    - main
+    - tags
+  dependencies:
+    - deploy:staging
+    - deploy:prod
+
+.deploy_failure_notification:
+  stage: .post
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      curl -X POST $SLACK_WEBHOOK \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "text": "❌ Deployment failed",
+          "blocks": [
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Deployment failed*\n*Project:* '$CI_PROJECT_NAME'\n*Environment:* '$CI_ENVIRONMENT_NAME'\n*Commit:* '$CI_COMMIT_SHORT_SHA'\n*Branch:* '$CI_COMMIT_REF_NAME'\n*Pipeline:* '$CI_PIPELINE_URL'"
+              }
+            }
+          ]
+        }'
+  when: on_failure
+  only:
+    - main
+    - tags
+  dependencies:
+    - deploy:staging
+    - deploy:prod
