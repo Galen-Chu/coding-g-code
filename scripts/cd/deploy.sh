@@ -13,6 +13,7 @@
 # Options:
 #   --skip-build     Skip build step
 #   --skip-health    Skip health check
+#   --pre-flight     Run pre-flight checks before deployment
 #   --force          Force deployment even if checks fail
 #   --dry-run        Show what would be deployed without deploying
 #   --help, -h       Show help message
@@ -47,6 +48,7 @@ AUTO_ROLLBACK="${AUTO_ROLLBACK:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 SKIP_HEALTH_CHECK="${SKIP_HEALTH_CHECK:-false}"
 FORCE_DEPLOY="${FORCE_DEPLOY:-false}"
+RUN_PREFLIGHT="${RUN_PREFLIGHT:-false}"
 
 # Health check settings
 HEALTH_CHECK_TIMEOUT="${HEALTH_CHECK_TIMEOUT:-300}"
@@ -107,6 +109,26 @@ load_environment_config() {
 # Usage: pre_deploy_checks
 pre_deploy_checks() {
     log_info "Running pre-deployment checks..."
+
+    # Run pre-flight checks if enabled
+    if [[ "${RUN_PREFLIGHT}" == "true" ]]; then
+        local preflight_script="${SCRIPT_DIR}/../utils/pre-flight.sh"
+
+        if [[ -f "${preflight_script}" ]]; then
+            log_info "Running pre-flight checks..."
+
+            local preflight_args=()
+            [[ "${DEPLOY_ENVIRONMENT}" == "prod" ]] && preflight_args+=(--strict)
+
+            if ! bash "${preflight_script}" "${preflight_args[@]}"; then
+                log_error "Pre-flight checks failed"
+                log_error "Use --force to bypass pre-flight checks"
+                return "${EXIT_ERROR_VALIDATION}"
+            fi
+        else
+            log_warn "Pre-flight script not found: ${preflight_script}"
+        fi
+    fi
 
     # Check if build artifacts exist
     if [[ "${SKIP_BUILD}" != "true" ]]; then
@@ -529,6 +551,7 @@ Arguments:
 Options:
   --skip-build         Skip build step
   --skip-health        Skip health check
+  --pre-flight         Run pre-flight checks before deployment
   --force              Force deployment even if checks fail
   --dry-run            Show what would be deployed without deploying
   --help, -h           Show this help message
@@ -550,13 +573,13 @@ Examples:
   # Deploy to staging
   $0 staging
 
-  # Deploy to production
-  $0 prod
+  # Deploy to production with pre-flight checks
+  $0 prod --pre-flight
 
   # Deploy with health check skipped
   $0 dev --skip-health
 
-  # Force deployment
+  # Force deployment (bypasses pre-flight checks)
   $0 prod --force
 
 EOF
@@ -587,6 +610,10 @@ main() {
                 ;;
             --force)
                 export FORCE_DEPLOY="true"
+                shift
+                ;;
+            --pre-flight)
+                export RUN_PREFLIGHT="true"
                 shift
                 ;;
             --dry-run)

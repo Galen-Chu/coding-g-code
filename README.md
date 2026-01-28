@@ -8,6 +8,7 @@ A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, a
 - **Auto-Detection**: Automatically detects project type and tools
 - **GitHub Actions & GitLab CI**: Ready-to-use workflow templates
 - **Comprehensive Scripts**: Lint, test, build, deploy, and rollback utilities
+- **Pre-flight Checks**: Status and documentation validation before operations
 - **Health Checks**: Built-in deployment validation
 - **Notifications**: Slack, email, and webhook support
 - **Rollback Support**: Automatic rollback on deployment failure
@@ -83,7 +84,10 @@ ci-cd-toolkit/
 │       ├── logger.sh        # Logging functions
 │       ├── validators.sh    # Input validation
 │       ├── notifiers.sh     # Notifications
-│       └── health-check.sh  # Health checks
+│       ├── health-check.sh  # Health checks
+│       ├── status-check.sh  # CI/CD status checking
+│       ├── doc-check.sh     # Documentation validation
+│       └── pre-flight.sh    # Pre-flight check orchestrator
 ├── config/
 │   └── ci-cd.conf           # Configuration template
 ├── templates/
@@ -299,13 +303,13 @@ Deploy to environments.
 # Deploy to staging
 bash scripts/cd/deploy.sh staging
 
-# Deploy to production
-bash scripts/cd/deploy.sh prod
+# Deploy to production with pre-flight checks
+bash scripts/cd/deploy.sh prod --pre-flight
 
 # Skip health checks
 bash scripts/cd/deploy.sh dev --skip-health-check
 
-# Force deployment
+# Force deployment (bypasses pre-flight checks)
 bash scripts/cd/deploy.sh prod --force
 ```
 
@@ -356,6 +360,84 @@ bash scripts/utils/notifiers.sh email "Build failed" --to devops@example.com
 # Webhook notification
 bash scripts/utils/notifiers.sh webhook https://hooks.example.com/deploy
 ```
+
+#### `scripts/utils/status-check.sh`
+
+Check CI/CD-relevant project status.
+
+```bash
+# Quick status check
+bash scripts/utils/status-check.sh --quick
+
+# Full check with fail-fast
+bash scripts/utils/status-check.sh --fail-on-dirty --fail-on-ci-fail
+
+# JSON output for automation
+bash scripts/utils/status-check.sh --json
+
+# Check before deployment
+bash scripts/utils/status-check.sh --fail-on-ci-fail --fail-on-behind
+```
+
+Checks:
+- Git working directory status
+- Branch sync status vs main
+- CI pipeline status (via GitHub CLI)
+- Recent commits
+
+#### `scripts/utils/doc-check.sh`
+
+Validate project documentation.
+
+```bash
+# Check all documentation
+bash scripts/utils/doc-check.sh
+
+# Check only required files
+bash scripts/utils/doc-check.sh --required-only
+
+# Check and create missing templates
+bash scripts/utils/doc-check.sh --fix
+
+# Fail if required docs are missing
+bash scripts/utils/doc-check.sh --fail-on-missing
+
+# Check for outdated documentation
+bash scripts/utils/doc-check.sh --check-staleness
+```
+
+Validates:
+- Required docs (README.md)
+- Recommended docs (CHANGELOG.md, CONTRIBUTING.md, LICENSE)
+- Documentation age/staleness
+- README content quality
+
+#### `scripts/utils/pre-flight.sh`
+
+Orchestrate comprehensive pre-flight checks.
+
+```bash
+# Run all pre-flight checks
+bash scripts/utils/pre-flight.sh
+
+# Quick pre-flight check
+bash scripts/utils/pre-flight.sh --quick
+
+# Strict mode (fail on any issues)
+bash scripts/utils/pre-flight.sh --strict
+
+# Skip documentation checks
+bash scripts/utils/pre-flight.sh --skip-docs
+
+# Auto-fix documentation issues
+bash scripts/utils/pre-flight.sh --fix
+```
+
+Integrates:
+- Dependency checks
+- Configuration validation
+- Status checks (via status-check.sh)
+- Documentation checks (via doc-check.sh)
 
 ## Examples
 

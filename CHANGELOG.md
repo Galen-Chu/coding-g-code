@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI scripts: lint, test, coverage with auto-detection
 - CD scripts: build, deploy, rollback with health checks
 - Utility libraries: common, logger, validators, notifiers, health-check
+- **Pre-flight check utilities**: status-check, doc-check, pre-flight orchestrator
+  - `status-check.sh`: CI/CD-focused status checking (git status, CI pipeline, branch sync)
+  - `doc-check.sh`: Documentation validation (required/recommended docs, staleness)
+  - `pre-flight.sh`: Orchestrates comprehensive pre-deployment checks
+- **Deploy script enhancement**: Added `--pre-flight` flag to `deploy.sh`
+- **Configuration**: Added `[preflight]` section to `ci-cd.conf`
 - Setup scripts: install-deps, init-project
 - GitHub Actions workflow templates (ci, cd, release, security-scan)
 - GitLab CI/CD configuration
