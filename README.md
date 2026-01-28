@@ -80,14 +80,15 @@ ci-cd-toolkit/
 │   │   ├── install-deps.sh  # Install required tools
 │   │   └── init-project.sh  # Initialize project
 │   └── utils/
-│       ├── common.sh        # Core utilities
-│       ├── logger.sh        # Logging functions
-│       ├── validators.sh    # Input validation
-│       ├── notifiers.sh     # Notifications
-│       ├── health-check.sh  # Health checks
-│       ├── status-check.sh  # CI/CD status checking
-│       ├── doc-check.sh     # Documentation validation
-│       └── pre-flight.sh    # Pre-flight check orchestrator
+│       ├── common.sh            # Core utilities
+│       ├── logger.sh            # Logging functions
+│       ├── validators.sh        # Input validation
+│       ├── notifiers.sh         # Notifications
+│       ├── health-check.sh      # Health checks
+│       ├── status-check.sh      # CI/CD status checking
+│       ├── doc-check.sh         # Documentation validation
+│       ├── pre-flight.sh        # Pre-flight check orchestrator
+│       └── update-changelog.sh  # CHANGELOG automation
 ├── config/
 │   └── ci-cd.conf           # Configuration template
 ├── templates/
@@ -438,6 +439,102 @@ Integrates:
 - Configuration validation
 - Status checks (via status-check.sh)
 - Documentation checks (via doc-check.sh)
+
+#### `scripts/utils/update-changelog.sh`
+
+Automate CHANGELOG.md updates following Keep a Changelog format.
+
+```bash
+# Interactive mode (recommended)
+bash scripts/utils/update-changelog.sh
+
+# Quick entry
+bash scripts/utils/update-changelog.sh --type added --message "Add new feature" --issue 123
+
+# Auto-generate from commits
+bash scripts/utils/update-changelog.sh --auto
+
+# Preview without writing
+bash scripts/utils/update-changelog.sh --type fixed --message "Fix bug" --dry-run
+
+# Validate CHANGELOG format
+bash scripts/utils/update-changelog.sh --validate
+```
+
+Features:
+- Interactive prompts with commit context
+- Support for all Keep a Changelog types (Added, Changed, Fixed, etc.)
+- Issue/PR reference tracking
+- CHANGELOG format validation
+- Dry-run mode for preview
+
+## CHANGELOG Workflow
+
+This toolkit includes automated CHANGELOG management to track project changes.
+
+### When to Update CHANGELOG
+
+**Required for:**
+- ✅ New features (`feat:` commits)
+- ✅ Bug fixes (`fix:` commits)
+- ✅ Breaking changes
+- ✅ Performance improvements
+
+**Not required for:**
+- ❌ Documentation only changes
+- ❌ Code style/formatting
+- ❌ Internal refactoring
+- ❌ Test updates
+
+### Quick Start
+
+```bash
+# Make your code changes
+git add .
+
+# Update CHANGELOG
+bash scripts/utils/update-changelog.sh
+
+# Commit everything together
+git add CHANGELOG.md
+git commit -m "feat: add new feature"
+```
+
+### Automation
+
+The toolkit includes:
+
+1. **Pre-commit hook** (optional):
+   ```bash
+   cp .github/hooks/pre-commit-changelog.sh .git/hooks/pre-commit
+   chmod +x .git/hooks/pre-commit
+   ```
+
+2. **CI validation**: CHANGELOG checks run in:
+   - GitHub Actions (on PRs)
+   - GitLab CI (on MRs)
+
+3. **Interactive tool**: `update-changelog.sh` with:
+   - Commit context awareness
+   - Type selection
+   - Format validation
+
+### Release Process
+
+When releasing:
+
+```bash
+# 1. Update CHANGELOG.md manually
+# Move items from [Unreleased] to [VERSION]
+
+# 2. Tag release
+git tag v1.1.0
+
+# 3. Push
+git push && git push --tags
+```
+
+For detailed workflow, see [CONTRIBUTING.md](CONTRIBUTING.md#changelog-workflow).
 
 ## Examples
 

@@ -291,6 +291,158 @@ docs: update getting started guide
 Add section on environment configuration and fix typos.
 ```
 
+## CHANGELOG Workflow
+
+### Why Update CHANGELOG?
+
+Keeping CHANGELOG.md updated helps users:
+- Track what changed between versions
+- Identify breaking changes before updating
+- Understand new features and fixes
+- Follow project development progress
+
+### When to Update CHANGELOG
+
+**Required:**
+- ✅ Before committing new features
+- ✅ Before committing bug fixes
+- ✅ Before committing breaking changes
+- ✅ During release preparation
+
+**Not Required:**
+- ❌ Typos/grammar fixes
+- ❌ Code formatting/style changes
+- ❌ Internal refactoring (no user-facing changes)
+- ❌ Documentation updates (unless adding features)
+
+### How to Update CHANGELOG
+
+#### Option 1: Interactive Mode (Recommended)
+
+```bash
+# Interactive prompt with recent commits shown
+bash scripts/utils/update-changelog.sh
+```
+
+This will:
+1. Show recent commits for reference
+2. Prompt you to select change type
+3. Prompt for changelog message
+4. Prompt for issue/PR number (optional)
+5. Insert entry in CHANGELOG.md
+
+#### Option 2: Quick Command Line
+
+```bash
+# Add entry directly
+bash scripts/utils/update-changelog.sh \
+  --type added \
+  --message "Add new feature X" \
+  --issue 123
+```
+
+Available types:
+- `added` - New features
+- `changed` - Changes to existing functionality
+- `deprecated` - Soon-to-be removed features
+- `removed` - Removed features
+- `fixed` - Bug fixes
+- `security` - Security vulnerability fixes
+
+#### Option 3: Auto-Generate from Commits
+
+```bash
+# Analyze recent commits and create entry
+bash scripts/utils/update-changelog.sh --auto
+```
+
+### CHANGELOG Format
+
+Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format:
+
+```markdown
+## [Unreleased]
+
+### Added
+- New feature X (#123)
+
+### Changed
+- Updated behavior of Y (#124)
+
+### Fixed
+- Fixed bug in Z (#125)
+
+## [1.0.0] - 2025-01-27
+
+### Added
+- Initial release features
+```
+
+### Release Process
+
+When preparing a release:
+
+1. Review [Unreleased] entries
+2. Create new version section:
+   ```markdown
+   ## [1.1.0] - 2025-01-28
+   ```
+3. Move items from [Unreleased] to new version
+4. Update version numbers in relevant files
+5. Commit and tag the release:
+   ```bash
+   git add CHANGELOG.md
+   git commit -m "chore: release v1.1.0"
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+
+### Validation
+
+Validate your CHANGELOG.md format:
+
+```bash
+# Check format
+bash scripts/utils/update-changelog.sh --validate
+
+# View unreleased entries
+bash scripts/utils/update-changelog.sh --show-unreleased
+```
+
+### Automation Tools
+
+The toolkit provides:
+- `scripts/utils/update-changelog.sh` - Interactive changelog updater
+- Pre-commit hooks (optional) - Remind to update CHANGELOG
+- CI checks (optional) - Validate CHANGELOG in PRs
+
+### Examples
+
+**Adding a new feature:**
+```bash
+# Make code changes
+git add .
+bash scripts/utils/update-changelog.sh --type added --message "Add user authentication"
+git commit -m "feat(auth): add user authentication"
+```
+
+**Fixing a bug:**
+```bash
+# Fix the bug
+bash scripts/utils/update-changelog.sh --type fixed --message "Fix login timeout"
+git commit -m "fix(auth): resolve login timeout issue"
+```
+
+**Preparing a release:**
+```bash
+# Move unreleased items to version section
+# Update CHANGELOG.md manually
+git add CHANGELOG.md
+git commit -m "chore: release v1.1.0"
+git tag v1.1.0
+git push && git push --tags
+```
+
 ## Pull Request Process
 
 ### PR Title

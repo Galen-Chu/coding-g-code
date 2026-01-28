@@ -50,6 +50,65 @@ jobs:
           LOG_LEVEL: info
 
   # =============================================================================
+  # CHANGELOG Check Job
+  # =============================================================================
+  changelog:
+    name: CHANGELOG Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup toolkit
+        run: |
+          chmod +x scripts/utils/update-changelog.sh
+          chmod +x scripts/utils/common.sh
+          chmod +x scripts/utils/logger.sh
+
+      - name: Check CHANGELOG was updated
+        run: |
+          # Get the base branch
+          BASE_BRANCH="${{ github.base_ref }}"
+          if [ -z "$BASE_BRANCH" ]; then
+            BASE_BRANCH="main"
+          fi
+
+          echo "Checking against base branch: $BASE_BRANCH"
+
+          # Check if CHANGELOG.md was modified
+          if git diff --name-only origin/"$BASE_BRANCH"...HEAD | grep -q "^CHANGELOG.md$"; then
+            echo "✓ CHANGELOG.md has been updated"
+            exit 0
+          fi
+
+          # Check if commit type requires CHANGELOG
+          COMMIT_TYPE=$(git log --format=%s --reverse origin/"$BASE_BRANCH"...HEAD | head -1 | cut -d':' -f1)
+
+          case "$COMMIT_TYPE" in
+            feat*|fix*|perf*|revert*)
+              echo "❌ CHANGELOG.md not updated for commit type: $COMMIT_TYPE"
+              echo ""
+              echo "Please update CHANGELOG.md to document these changes."
+              echo ""
+              echo "Quick update:"
+              echo "  bash scripts/utils/update-changelog.sh"
+              echo ""
+              exit 1
+              ;;
+            *)
+              echo "✓ CHANGELOG update not required for: $COMMIT_TYPE"
+              exit 0
+              ;;
+          esac
+
+      - name: Validate CHANGELOG format
+        run: bash scripts/utils/update-changelog.sh --validate
+        continue-on-error: false
+
+  # =============================================================================
   # Test Job
   # =============================================================================
   test:
