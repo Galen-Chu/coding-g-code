@@ -245,7 +245,7 @@ interactive_prompt() {
     fi
 
     # Prompt for issue number
-    if [[ -z "${ISSUE_NUMBER}" ]]; then && [[ "${AUTO_MODE}" != "true" ]]; then
+    if [[ -z "${ISSUE_NUMBER}" ]] && [[ "${AUTO_MODE}" != "true" ]]; then
         echo ""
         read -rp "Enter issue/PR number (optional, press Enter to skip): " ISSUE_NUMBER
 
