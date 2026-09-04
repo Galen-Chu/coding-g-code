@@ -2,7 +2,6 @@
 
 > **A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, and workflows for automating your development pipeline.**
 
-
 ---
 
 ## ✨ Features
@@ -16,7 +15,6 @@
 - **Notifications**: Slack, email, and webhook support
 - **Rollback Support**: Automatic rollback on deployment failure
 - **Configurable**: Centralized configuration file with environment variable overrides
-
 
 ---
 
@@ -487,7 +485,6 @@ Features:
 - Issue/PR reference tracking
 - CHANGELOG format validation
 - Dry-run mode for preview
-
 
 ---
 
